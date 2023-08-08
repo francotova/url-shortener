@@ -5,6 +5,7 @@ import { setCacheData } from "./utils/redis.js";
 import { shortenUrl, expandUrl } from "./controllers/shortenerController.js";
 import { redirectUrl } from "./controllers/redirectController.js";
 import { getStatsForShortUrl } from "./controllers/statsController.js";
+import { deleteShortUrlAndStats } from "./controllers/deleteController.js";
 
 
 const app = express();
@@ -37,6 +38,10 @@ app.get("/redirect/:shortUrl", async (req, res) => {
 
 app.get("/stats/:shortUrl", async (req, res) => {
   getStatsForShortUrl(req, res)
+})
+
+app.get("/delete/:shortUrl", async (req, res) => {
+  deleteShortUrlAndStats(req, res);
 })
   
 

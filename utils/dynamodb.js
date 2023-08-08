@@ -2,6 +2,7 @@ import AWS from "./awsConfig.js";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 import { recordRedirectStats, recordStatistics } from "./stats.js";
+import { deleteCacheForShortUrl } from "./redis.js";
 // import { logRedirectStats } from "../routes/statsRoute.js";
 
 
@@ -262,6 +263,32 @@ export function persistData(longUrl, callback) {
   });
 }
 
+//Reescribo función 'searchInDynamoAndResponse' con callback:
+// export function searchInDynamoAndResponse(hashedUrl, callback) {
+//   const params = {
+//     TableName: "ShortsUrl", // Cambiar por el nombre de tu tabla en DynamoDB
+//     Key: {
+//       shortUrl: hashedUrl, // Utilizamos el hash revertido para buscar en la base de datos
+//     },
+//   };
+
+//   docClient.get(params, (error, data) => {
+//     if (error) {
+//       console.error("Error al obtener de DynamoDB:", error);
+//       callback(null, error);
+//     }
+
+//     if (!data.Item) {
+//       let notExist = "No existe el item en DynamoDB";
+//       callback(null, notExist);
+//     }
+
+//     console.log("Obtenido desde DynamoDB.", data.Item);
+//     callback(null, data.Item.longUrl);
+//   });
+// }
+
+
 export function searchInDynamoAndResponse(hashedUrl, res) {
   const params = {
     TableName: "ShortsUrl", // Cambiar por el nombre de tu tabla en DynamoDB
@@ -335,6 +362,61 @@ export function searchStatsInDynamoAndResponse(hashedUrl, res) {
         console.log("No se encontraron estadísticas para la shortUrl:", shortUrl);
         res.status(404).send("No se encontraron estadísticas para la shortUrl:", shortUrl);
       }
+    }
+  });
+}
+
+export function deleteShortUrl(hashedUrl, callback) {
+  const deleteShortUrlParams = {
+    TableName: "ShortsUrl", // Nombre de la tabla de URL cortas
+    Key: {
+      shortUrl: hashedUrl,
+    },
+  };
+
+  docClient.delete(deleteShortUrlParams, (error, data) => {
+    if (error) {
+      console.error("Error al eliminar la shortUrl desde DynamoDB:", error);
+      callback(error);
+    } else {
+      console.log("ShortUrl eliminada con éxito:", data);
+
+      // Eliminar las estadísticas asociadas de la tabla Stats
+      const deleteStatsParams = {
+        TableName: "Stats", // Nombre de la tabla de estadísticas
+        Key: {
+          shortUrl: hashedUrl,
+        },
+      };
+
+      docClient.delete(deleteStatsParams, (statsError) => {
+        if (statsError) {
+          console.error("Error al eliminar estadísticas desde DynamoDB:", statsError);
+          callback(statsError);
+        } else {
+          console.log("Estadísticas eliminadas con éxito para la shortUrl:", hashedUrl);
+          
+          // También eliminamos la entrada del caché si existía
+          deleteCacheForShortUrl(hashedUrl, (error, hashedUrl) => {
+            if(error) {
+              console.log("Error al eliminar la ShortURL del caché.");
+              callback(null, error);
+            }
+            else {
+              console.log("Short URL eliminada con éxito", hashedUrl);
+              callback(null, hashedUrl);
+            }
+          })
+          // redisClient.del(hashedUrl, (redisError) => {
+          //   if (redisError) {
+          //     console.error("Error al eliminar caché de Redis:", redisError);
+          //   } else {
+          //     console.log("Caché eliminado para la shortUrl:", hashedUrl);
+          //   }
+          //   callback(null);
+          // });
+        }
+      });
     }
   });
 }

@@ -23,6 +23,36 @@ export function setCacheData(shortUrl, longUrl) {
   redisClient.setex(`${REDIS_KEY_PREFIX}${shortUrl}`, 86400, longUrl);
 }
 
+//Reescribo función 'searchCacheOrDynamoAndResponse':
+// export function searchCacheOrDynamoAndResponse(hashedUrl, callback) {
+//   redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (error, longUrl) => {
+//     if (error) {
+//       console.error("Error al obtener de Redis:", error);
+//       callback(null, error);
+//     }
+
+//     if (longUrl) {
+//       console.log("Obtenido desde el Caché.");
+//       // Si encontramos la URL larga en Redis, redirigimos al usuario
+//       callback(null, longUrl);
+//     } else {
+//       searchInDynamoAndResponse(hashedUrl, (err, longUrl) => {
+//         if(err) {
+//           console.error("Error al obtener de Redis:", error);
+//           callback(null, error);
+//         }
+
+//         if(longUrl) {
+//           console.log("Obtenido desde DynamoDB.");
+//           // Si encontramos la URL larga en Redis, redirigimos al usuario
+//           callback(null, longUrl);
+//         }
+//       });
+//     }
+//   });
+// }
+
+
 export function searchCacheOrDynamoAndResponse(hashedUrl, res) {
   redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (error, longUrl) => {
     if (error) {
@@ -80,4 +110,16 @@ export function searchStatsInCacheOrDynamoAndResponse(hashedUrl, res) {
         searchStatsInDynamoAndResponse(hashedUrl, res);
       }
     });
+}
+
+export function deleteCacheForShortUrl(hashedUrl, callback) {
+  redisClient.del(hashedUrl, (error) => {
+    if (error) {
+      console.error("Error al eliminar caché de Redis:", error);
+      callback(null, error);
+    } else {
+      console.log("Caché eliminado para la shortUrl:", hashedUrl);
+      callback(null, hashedUrl);
+    }
+  });
 }
