@@ -1,71 +1,14 @@
-import AWS from "aws-sdk";
+import AWS from "./awsConfig.js";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
+import { recordRedirectStats, recordStatistics } from "./stats.js";
+// import { logRedirectStats } from "../routes/statsRoute.js";
 
-// Configuración de AWS DynamoDB
-AWS.config.update({
-  region: "us-east-2",
-  endpoint: "http://localhost:8000",
-  accessKeyId: "AKIAY5B5K7V4GT3TD2HQ",
-  secretAccessKey: "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",
-});
+
+
 
 const dynamoDB = new AWS.DynamoDB();
 const docClient = new AWS.DynamoDB.DocumentClient();
-
-// export function createTable(callback) {
-//   const params = {
-//     TableName: "ShortsUrl", // Cambiar por el nombre de tu tabla en DynamoDB
-//     KeySchema: [
-//       {
-//         AttributeName: "shortUrl", // Reemplaza 'shortUrl' con el nombre del atributo que deseas usar como clave primaria
-//         KeyType: "HASH", // 'HASH' para clave primaria de hash, 'RANGE' para clave primaria compuesta
-//       },
-//     ],
-//     AttributeDefinitions: [
-//       {
-//         AttributeName: "shortUrl", // Reemplaza 'shortUrl' con el nombre del atributo que deseas usar como clave primaria
-//         AttributeType: "S", // 'S' para cadena de texto, 'N' para número, etc.
-//       },
-//       {
-//         AttributeName: "longUrl", // Atributo para el índice global secundario
-//         AttributeType: "S", // 'S' para cadena de texto, 'N' para número, etc.
-//       },
-//     ],
-//     ProvisionedThroughput: {
-//       ReadCapacityUnits: 5, // Capacidad de lectura (ajusta según tus necesidades)
-//       WriteCapacityUnits: 5, // Capacidad de escritura (ajusta según tus necesidades)
-//     },
-//     GlobalSecondaryIndexes: [
-//       {
-//         IndexName: "LongUrlIndex", // Nombre del índice global secundario
-//         KeySchema: [
-//           {
-//             AttributeName: "longUrl", // Clave primaria invertida para el índice global secundario
-//             KeyType: "HASH", // 'HASH' para clave primaria de hash, 'RANGE' para clave primaria compuesta
-//           },
-//         ],
-//         Projection: {
-//           ProjectionType: "KEYS_ONLY", // Proyecta solo las claves (shortUrl) para el índice global secundario
-//         },
-//         ProvisionedThroughput: {
-//           ReadCapacityUnits: 5, // Capacidad de lectura para el índice global secundario
-//           WriteCapacityUnits: 5, // Capacidad de escritura para el índice global secundario
-//         },
-//       },
-//     ],
-//   };
-
-//   dynamoDB.createTable(params, function (err, data) {
-//     if (err) {
-//       console.error("Error al crear la tabla:", err);
-//       callback(err);
-//     } else {
-//       console.log("Tabla creada con éxito:", data);
-//       callback(null);
-//     }
-//   });
-// }
 
 
 export function createTables(callback) {
@@ -112,27 +55,97 @@ export function createTables(callback) {
       ],
     };
   
-    // Tabla para las estadísticas
+    // const statsTableParams = {
+    //   TableName: "Stats",
+    //   KeySchema: [
+    //     {
+    //       AttributeName: "shortUrl",
+    //       KeyType: "HASH",
+    //     },
+    //   ],
+    //   AttributeDefinitions: [
+    //     {
+    //       AttributeName: "shortUrl",
+    //       AttributeType: "S",
+    //     },
+    //     {
+    //       AttributeName: "longUrl",
+    //       AttributeType: "S",
+    //     },
+    //     // Agregar los nuevos atributos de agente de usuario y dirección IP
+    //     {
+    //       AttributeName: "userAgent",
+    //       AttributeType: "S",
+    //     },
+    //     {
+    //       AttributeName: "ipAddress",
+    //       AttributeType: "S",
+    //     },
+    //     // ... otros atributos existentes ...
+    //   ],
+    //   ProvisionedThroughput: {
+    //     ReadCapacityUnits: 5,
+    //     WriteCapacityUnits: 5,
+    //   },
+    //   GlobalSecondaryIndexes: [
+    //     {
+    //       IndexName: "LongUrlIndex",
+    //       KeySchema: [
+    //         {
+    //           AttributeName: "longUrl",
+    //           KeyType: "HASH",
+    //         },
+    //       ],
+    //       Projection: {
+    //         ProjectionType: "ALL",
+    //       },
+    //       ProvisionedThroughput: {
+    //         ReadCapacityUnits: 5,
+    //         WriteCapacityUnits: 5,
+    //       },
+    //     },
+    //   ],
+    // };
     const statsTableParams = {
-      TableName: "Stats", // Cambiar por el nombre de tu tabla en DynamoDB para las estadísticas
+      TableName: "Stats", // Nombre de la tabla para las estadísticas
       KeySchema: [
         {
-          AttributeName: "type", // Reemplaza 'type' con el nombre del atributo que deseas usar como clave primaria
-          KeyType: "HASH", // 'HASH' para clave primaria de hash, 'RANGE' para clave primaria compuesta
+          AttributeName: "shortUrl",
+          KeyType: "HASH",
         },
-        // Si deseas una clave primaria compuesta, agrega más atributos aquí
       ],
       AttributeDefinitions: [
         {
-          AttributeName: "type", // Reemplaza 'type' con el nombre del atributo que deseas usar como clave primaria
-          AttributeType: "S", // 'S' para cadena de texto, 'N' para número, etc.
+          AttributeName: "shortUrl",
+          AttributeType: "S",
         },
-        // Agrega más atributos aquí si los necesitas para una clave primaria compuesta
+        {
+          AttributeName: "longUrl",
+          AttributeType: "S",
+        },
       ],
       ProvisionedThroughput: {
-        ReadCapacityUnits: 5, // Capacidad de lectura (ajusta según tus necesidades)
-        WriteCapacityUnits: 5, // Capacidad de escritura (ajusta según tus necesidades)
+        ReadCapacityUnits: 5,
+        WriteCapacityUnits: 5,
       },
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: "LongUrlIndex",
+          KeySchema: [
+            {
+              AttributeName: "longUrl",
+              KeyType: "HASH",
+            },
+          ],
+          Projection: {
+            ProjectionType: "ALL",
+          },
+          ProvisionedThroughput: {
+            ReadCapacityUnits: 5,
+            WriteCapacityUnits: 5,
+          },
+        },
+      ],
     };
   
     // Crear la tabla para las URL cortas
@@ -188,8 +201,9 @@ export async function getItemsTable(tableName, res) {
 }
 export function persistData(longUrl, callback) {
   const hash = nanoid(6); // Longitud de la URL corta
+  const startTime = Date.now(); // Marca de tiempo de inicio para medir la duración
 
-  // Hasheamos la URL corta utilizando SHA-256 para generar un hash determinista
+  // Hasheamos la URL corta utilizando el algoritmo de SHA-256 para generar un hash.
   const hashedUrl = crypto.createHash("sha256").update(hash).digest("hex");
 
   console.log("SHORTEN: ", hashedUrl);
@@ -220,6 +234,11 @@ export function persistData(longUrl, callback) {
         callback(null, existingShortUrl);
       } else {
         // Si no existe un resultado, podemos persistir los datos en la tabla
+
+        const endTime = Date.now(); // Marca de tiempo de finalización para medir la duración
+        const generatedDuration = endTime - startTime; // Duración de generación de la URL corta
+        recordStatistics(hashedUrl, longUrl, new Date().toISOString(), generatedDuration, 0);
+
         const params = {
           TableName: "ShortsUrl", // Cambiar por el nombre de tu tabla en DynamoDB
           Item: {
@@ -265,7 +284,7 @@ export function searchInDynamoAndResponse(hashedUrl, res) {
   });
 }
 
-export function searchInDynamoAndRedirect(hashedUrl, res) {
+export function searchInDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress) {
     const params = {
       TableName: "ShortsUrl", // Cambiar por el nombre de tu tabla en DynamoDB
       Key: {
@@ -282,9 +301,40 @@ export function searchInDynamoAndRedirect(hashedUrl, res) {
       if (!data.Item) {
         return res.status(404).json({ error: "URL corta no encontrada" });
       }
+      const endTime = Date.now(); // Marca de tiempo de finalización para medir la duración
+      const redirectDuration = endTime - startTime; // Duración de redirección
+
       console.log("Obtenido desde DynamoDB.");
+
       res.redirect(301, data.Item.longUrl);
+
+      recordRedirectStats(hashedUrl, redirectDuration, userAgent, ipAddress);
+      
     });
   }
 
-// Otras funciones relacionadas con la interacción con DynamoDB
+
+export function searchStatsInDynamoAndResponse(hashedUrl, res) {
+  const params = {
+    TableName: "Stats", // Nombre de la tabla para las estadísticas
+    Key: {
+      shortUrl: hashedUrl,
+    },
+  };
+
+  docClient.get(params, (dynamoError, data) => {
+    if (dynamoError) {
+      console.error("Error al obtener estadísticas desde DynamoDB:", dynamoError);
+      callback(dynamoError, null);
+    } else {
+      if (data.Item) {
+        console.log("Estadísticas obtenidas desde DynamoDB:", data.Item);
+        res.status(200).json(data.Item);
+      } else {
+        // Si no se encontraron estadísticas en DynamoDB
+        console.log("No se encontraron estadísticas para la shortUrl:", shortUrl);
+        res.status(404).send("No se encontraron estadísticas para la shortUrl:", shortUrl);
+      }
+    }
+  });
+}

@@ -1,5 +1,8 @@
 import redis from "redis";
-import {searchInDynamoAndRedirect, searchInDynamoAndResponse} from "./dynamodb.js";
+import {searchInDynamoAndRedirect, searchInDynamoAndResponse, searchStatsInDynamoAndResponse} from "./dynamodb.js";
+import { recordRedirectStats } from "./stats.js";
+// import { logRedirectStats } from "../routes/statsRoute.js";
+
 
 // Configuración de Redis
 const redisClient = redis.createClient({
@@ -37,7 +40,7 @@ export function searchCacheOrDynamoAndResponse(hashedUrl, res) {
   });
 }
 
-export function searchCacheOrDynamoAndRedirect(hashedUrl, res) {
+export function searchCacheOrDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress) { // add parameter startTime, userAgent, ipAddress
     redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (error, longUrl) => {
       if (error) {
         console.error("Error al obtener de Redis:", error);
@@ -45,11 +48,36 @@ export function searchCacheOrDynamoAndRedirect(hashedUrl, res) {
       }
   
       if (longUrl) {
+        const endTime = Date.now(); // Marca de tiempo de finalización para medir la duración
+        const redirectDuration = endTime - startTime; // Duración de redirección
+
         console.log("Obtenido desde el Caché.");
         // Si encontramos la URL larga en Redis, redirigimos al usuario
-          res.redirect(301, longUrl);
+
+        res.redirect(301, longUrl);
+        console.log("Después de redireccionar");
+        recordRedirectStats(hashedUrl, redirectDuration, userAgent, ipAddress);
+
       } else {
-        searchInDynamoAndRedirect(hashedUrl, res);
+        searchInDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress); // add parameter startTime, userAgent, ipAddress
       }
     });
   }
+
+export function searchStatsInCacheOrDynamoAndResponse(hashedUrl, res) {
+    // Intentar obtener las estadísticas desde el caché de Redis
+    redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (redisError, cachedStats) => {
+      if (redisError) {
+        console.error("Error al obtener estadísticas desde Redis:", redisError);
+      }
+  
+      if (cachedStats) {
+        // Si las estadísticas están en caché, devolverlas
+        console.log("Estadísticas obtenidas desde Redis:", cachedStats);
+        res.status(200).json(cachedStats);
+      } else {
+        // Si no están en caché, obtenerlas de DynamoDB
+        searchStatsInDynamoAndResponse(hashedUrl, res);
+      }
+    });
+}

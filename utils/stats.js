@@ -1,82 +1,55 @@
 // utils/stats.js
-import AWS from "aws-sdk";
-
+import AWS from './awsConfig.js';
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-// Función para registrar estadísticas de generación de URL corta
-export async function logShortUrlGenerationStats(duration) {
+
+// Record Statidistics
+export function recordStatistics(shortUrl, longUrl, createdTimestamp, generatedDuration, redirectDuration) {
   const params = {
-    TableName: "Stats", // Cambiar por el nombre de la tabla en DynamoDB para las estadísticas
+    TableName: "Stats", // Cambiar por el nombre de tu tabla en DynamoDB para las estadísticas
     Item: {
-      type: "shortUrlGeneration",
-      timestamp: new Date().toISOString(),
-      duration,
+      shortUrl: shortUrl,
+      longUrl: longUrl,
+      createdTimestamp: createdTimestamp,
+      generatedDuration: generatedDuration,
+      redirectDuration: redirectDuration,
+      redirectCount: 0, // Inicializamos el contador de redirecciones en 0
+      cutRequestsCount: 0, // Inicializamos el contador de solicitudes de corte en 0
     },
   };
 
-  try {
-    await docClient.put(params).promise();
-  } catch (error) {
-    console.error("Error al guardar las estadísticas:", error);
-    // Manejo de errores, por ejemplo, reintentar o guardar en un registro de errores
-  }
+  docClient.put(params, (error) => {
+    if (error) {
+      console.error("Error al registrar estadísticas:", error);
+    } else {
+      console.log("Estadísticas registradas con éxito:", params.Item);
+    }
+  });
 }
 
-// Función para registrar estadísticas de redirección
-export async function logRedirectStats(shortUrl, redirectTime) {
+// Función para registrar las estadísticas de redirección
+export function recordRedirectStats(shortUrl, redirectDuration, userAgent, ipAddress) {
   const params = {
-    TableName: "Stats", // Cambiar por el nombre de la tabla en DynamoDB para las estadísticas
-    Item: {
-      type: "redirection",
-      timestamp: new Date().toISOString(),
-      shortUrl,
-      redirectTime,
+    TableName: "Stats", // Cambiar por el nombre de tu tabla en DynamoDB para las estadísticas
+    Key: {
+      shortUrl: shortUrl,
     },
+    UpdateExpression: "SET redirectDuration = :redirectDuration, redirectCount = redirectCount + :inc, userAgent = :userAgent, ipAddress = :ipAddress",
+    ExpressionAttributeValues: {
+      ":redirectDuration": redirectDuration,
+      ":inc": 1,
+      ":userAgent": userAgent,
+      ":ipAddress": ipAddress,
+    },
+    ReturnValues: "ALL_NEW",
   };
 
-  try {
-    await docClient.put(params).promise();
-  } catch (error) {
-    console.error("Error al guardar las estadísticas:", error);
-    // Manejo de errores, por ejemplo, reintentar o guardar en un registro de errores
-  }
-}
-
-// Función para registrar estadísticas de cantidad de redirecciones
-export async function logRedirectionCountStats(shortUrl) {
-  const params = {
-    TableName: "Stats", // Cambiar por el nombre de la tabla en DynamoDB para las estadísticas
-    Item: {
-      type: "redirectionCount",
-      timestamp: new Date().toISOString(),
-      shortUrl,
-    },
-  };
-
-  try {
-    await docClient.put(params).promise();
-  } catch (error) {
-    console.error("Error al guardar las estadísticas:", error);
-    // Manejo de errores, por ejemplo, reintentar o guardar en un registro de errores
-  }
-}
-
-// Función para registrar estadísticas de solicitudes de corte para una longUrl
-export async function logLongUrlCutRequestsStats(longUrl) {
-  const params = {
-    TableName: "Stats", // Cambiar por el nombre de la tabla en DynamoDB para las estadísticas
-    Item: {
-      type: "cutRequests",
-      timestamp: new Date().toISOString(),
-      longUrl,
-    },
-  };
-
-  try {
-    await docClient.put(params).promise();
-  } catch (error) {
-    console.error("Error al guardar las estadísticas:", error);
-    // Manejo de errores, por ejemplo, reintentar o guardar en un registro de errores
-  }
+  docClient.update(params, (error, data) => {
+    if (error) {
+      console.error("Error al registrar estadísticas de redirección:", error);
+    } else {
+      console.log("Estadísticas de redirección registradas con éxito:", data.Attributes);
+    }
+  });
 }
 

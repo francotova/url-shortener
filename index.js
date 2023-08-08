@@ -2,18 +2,15 @@ import express from "express";
 import bodyParser from "body-parser";
 import { createTables,  getAllTables, getItemsTable, persistData } from "./utils/dynamodb.js";
 import { setCacheData } from "./utils/redis.js";
-import { shortenUrl, expandUrl } from "./routes/shortenerRoute.js";
-import { redirectUrl } from "./routes/redirectRoute.js";
-import {
-    logShortUrlGenerationStats,
-    logRedirectStats,
-    logRedirectionCountStats,
-    logLongUrlCutRequestsStats,
-  } from "./utils/stats.js";
-// import { recordStats, getStats } from "./routes/statsRoute.js";
+import { shortenUrl, expandUrl } from "./controllers/shortenerController.js";
+import { redirectUrl } from "./controllers/redirectController.js";
+import { getStatsForShortUrl } from "./controllers/statsController.js";
+
 
 const app = express();
 app.use(bodyParser.json());
+
+
 
 // Endpoint para acortar la URL
 app.post("/shorten", async (req, res) => {
@@ -25,10 +22,6 @@ app.get("/expand/:shortUrl", async (req, res) => {
   expandUrl(req, res);
 });
 
-// Endpoint para obtener estadísticas
-// app.get("/stats/:shortUrl", async (req, res) => {
-//   getStats(req, res);
-// });
 
 app.get("/bdview/tables", async (req, res) => {
     getAllTables(req, res);
@@ -39,7 +32,11 @@ app.get("/bdview/tables/:tableName", async (req, res) => {
 });
 
 app.get("/redirect/:shortUrl", async (req, res) => {
-    redirectUrl(req, res);
+  redirectUrl(req, res);
+})
+
+app.get("/stats/:shortUrl", async (req, res) => {
+  getStatsForShortUrl(req, res)
 })
   
 
@@ -60,4 +57,4 @@ app.get("/redirect/:shortUrl", async (req, res) => {
 
 app.listen(3000, () => {
     console.log("Servidor iniciado en el puerto 3000");
-  });
+});
