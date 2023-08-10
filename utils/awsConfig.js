@@ -1,10 +1,12 @@
 import AWS from 'aws-sdk'
+import {config} from "../config.js"
+
 
 AWS.config.update({
-    region: "us-east-2",
-    endpoint: "http://localhost:8000",
-    accessKeyId: "AKIAY5B5K7V4GT3TD2HQ",
-    secretAccessKey: "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",
-});
+    region: config.REGION_AWS,
+    endpoint: config.ENDPOINT_AWS,
+    accessKeyId: config.ACCESS_KEY_ID_AWS,
+    secretAccessKey: config.SECRET_KEY_AWS
+})
 
 export default AWS;

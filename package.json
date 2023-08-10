@@ -5,10 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "local": "set NODE_ENV=dev&& nodemon index.js",
-    "debug": "set NODE_ENV=dev&& nodemon --inspect index.js",
-    "testing": "set NODE_ENV=testing&& nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "local": "nodemon index.js"
   },
   "author": "Tovagliare Chacón, Franco",
   "license": "ISC",

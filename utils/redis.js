@@ -1,14 +1,13 @@
 import redis from "redis";
 import {searchInDynamoAndRedirect, searchInDynamoAndResponse, searchStatsInDynamoAndResponse} from "./dynamodb.js";
 import { recordRedirectStats } from "./stats.js";
-// import { logRedirectStats } from "../routes/statsRoute.js";
+import { config } from "../config.js"
 
-
-// Configuración de Redis
 const redisClient = redis.createClient({
-  host: "localhost", // Cambiar por la dirección de tu servidor Redis
-  port: 6379, // Puerto de Redis
+  host: config.REDIS_HOST, // Cambiar por la dirección de tu servidor Redis
+  port: config.REDIS_PORT, // Puerto de Redis
 });
+
 const REDIS_KEY_PREFIX = "short_url:";
 redisClient.on("connect", function () {
   console.log("redis connected");
@@ -22,35 +21,6 @@ redisClient.on("error", (err) => {
 export function setCacheData(shortUrl, longUrl) {
   redisClient.setex(`${REDIS_KEY_PREFIX}${shortUrl}`, 86400, longUrl);
 }
-
-//Reescribo función 'searchCacheOrDynamoAndResponse':
-// export function searchCacheOrDynamoAndResponse(hashedUrl, callback) {
-//   redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (error, longUrl) => {
-//     if (error) {
-//       console.error("Error al obtener de Redis:", error);
-//       callback(null, error);
-//     }
-
-//     if (longUrl) {
-//       console.log("Obtenido desde el Caché.");
-//       // Si encontramos la URL larga en Redis, redirigimos al usuario
-//       callback(null, longUrl);
-//     } else {
-//       searchInDynamoAndResponse(hashedUrl, (err, longUrl) => {
-//         if(err) {
-//           console.error("Error al obtener de Redis:", error);
-//           callback(null, error);
-//         }
-
-//         if(longUrl) {
-//           console.log("Obtenido desde DynamoDB.");
-//           // Si encontramos la URL larga en Redis, redirigimos al usuario
-//           callback(null, longUrl);
-//         }
-//       });
-//     }
-//   });
-// }
 
 
 export function searchCacheOrDynamoAndResponse(hashedUrl, res) {
@@ -70,7 +40,7 @@ export function searchCacheOrDynamoAndResponse(hashedUrl, res) {
   });
 }
 
-export function searchCacheOrDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress) { // add parameter startTime, userAgent, ipAddress
+export function searchCacheOrDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress) { 
     redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (error, longUrl) => {
       if (error) {
         console.error("Error al obtener de Redis:", error);
@@ -78,24 +48,24 @@ export function searchCacheOrDynamoAndRedirect(hashedUrl, res, startTime, userAg
       }
   
       if (longUrl) {
-        const endTime = Date.now(); // Marca de tiempo de finalización para medir la duración
-        const redirectDuration = endTime - startTime; // Duración de redirección
+        const endTime = Date.now();
+        const redirectDuration = endTime - startTime; 
 
         console.log("Obtenido desde el Caché.");
-        // Si encontramos la URL larga en Redis, redirigimos al usuario
+        
 
         res.redirect(301, longUrl);
         console.log("Después de redireccionar");
         recordRedirectStats(hashedUrl, redirectDuration, userAgent, ipAddress);
 
       } else {
-        searchInDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress); // add parameter startTime, userAgent, ipAddress
+        searchInDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress); 
       }
     });
   }
 
 export function searchStatsInCacheOrDynamoAndResponse(hashedUrl, res) {
-    // Intentar obtener las estadísticas desde el caché de Redis
+   
     redisClient.get(`${REDIS_KEY_PREFIX}${hashedUrl}`, (redisError, cachedStats) => {
       if (redisError) {
         console.error("Error al obtener estadísticas desde Redis:", redisError);

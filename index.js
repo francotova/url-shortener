@@ -13,12 +13,10 @@ app.use(bodyParser.json());
 
 
 
-// Endpoint para acortar la URL
 app.post("/shorten", async (req, res) => {
   shortenUrl(req, res, persistData, setCacheData);
 });
 
-// Endpoint para obtener y redirigir
 app.get("/expand/:shortUrl", async (req, res) => {
   expandUrl(req, res);
 });
@@ -55,11 +53,11 @@ app.get("/delete/:shortUrl", async (req, res) => {
 //   }
 
 //   // Una vez creada la tabla, iniciamos el servidor de Express
-//   app.listen(3000, () => {
-//     console.log("Servidor iniciado en el puerto 3000");
+//   app.listen(process.env.PORT, () => {
+//     console.log("Servidor iniciado en el puerto: ", process.env.PORT);
 //   });
 // });
 
-app.listen(3000, () => {
-    console.log("Servidor iniciado en el puerto 3000");
+app.listen(process.env.PORT, () => {
+    console.log("Servidor iniciado en el puerto: ", process.env.PORT);
 });

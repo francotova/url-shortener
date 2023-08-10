@@ -6,15 +6,15 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 // Record Statidistics
 export function recordStatistics(shortUrl, longUrl, createdTimestamp, generatedDuration, redirectDuration) {
   const params = {
-    TableName: "Stats", // Cambiar por el nombre de tu tabla en DynamoDB para las estadísticas
+    TableName: "Stats", 
     Item: {
       shortUrl: shortUrl,
       longUrl: longUrl,
       createdTimestamp: createdTimestamp,
       generatedDuration: generatedDuration,
       redirectDuration: redirectDuration,
-      redirectCount: 0, // Inicializamos el contador de redirecciones en 0
-      cutRequestsCount: 0, // Inicializamos el contador de solicitudes de corte en 0
+      redirectCount: 0, 
+      cutRequestsCount: 0, 
     },
   };
 
@@ -30,7 +30,7 @@ export function recordStatistics(shortUrl, longUrl, createdTimestamp, generatedD
 // Función para registrar las estadísticas de redirección
 export function recordRedirectStats(shortUrl, redirectDuration, userAgent, ipAddress) {
   const params = {
-    TableName: "Stats", // Cambiar por el nombre de tu tabla en DynamoDB para las estadísticas
+    TableName: "Stats", 
     Key: {
       shortUrl: shortUrl,
     },
