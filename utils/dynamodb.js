@@ -1,125 +1,12 @@
 import AWS from "./awsConfig.js";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
 import crypto from "crypto";
 import { recordRedirectStats, recordStatistics } from "./stats.js";
 import { deleteCacheForShortUrl } from "./redis.js";
-
-
-
+import { config } from "../config.js"
 
 const dynamoDB = new AWS.DynamoDB();
 const docClient = new AWS.DynamoDB.DocumentClient();
-
-
-export function createTables(callback) {
-    // Tabla para las URL cortas
-    const shortUrlTableParams = {
-      TableName: "ShortsUrl", 
-      KeySchema: [
-        {
-          AttributeName: "shortUrl", 
-          KeyType: "HASH", 
-        },
-      ],
-      AttributeDefinitions: [
-        {
-          AttributeName: "shortUrl", 
-          AttributeType: "S", 
-        },
-        {
-          AttributeName: "longUrl", 
-          AttributeType: "S", 
-        },
-      ],
-      ProvisionedThroughput: {
-        ReadCapacityUnits: 5, 
-        WriteCapacityUnits: 5, 
-      },
-      GlobalSecondaryIndexes: [
-        {
-          IndexName: "LongUrlIndex", 
-          KeySchema: [
-            {
-              AttributeName: "longUrl", 
-              KeyType: "HASH",
-            },
-          ],
-          Projection: {
-            ProjectionType: "KEYS_ONLY",
-          },
-          ProvisionedThroughput: {
-            ReadCapacityUnits: 5, 
-            WriteCapacityUnits: 5, 
-          },
-        },
-      ],
-    };
-  
-    
-    const statsTableParams = {
-      TableName: "Stats", 
-      KeySchema: [
-        {
-          AttributeName: "shortUrl",
-          KeyType: "HASH",
-        },
-      ],
-      AttributeDefinitions: [
-        {
-          AttributeName: "shortUrl",
-          AttributeType: "S",
-        },
-        {
-          AttributeName: "longUrl",
-          AttributeType: "S",
-        },
-      ],
-      ProvisionedThroughput: {
-        ReadCapacityUnits: 5,
-        WriteCapacityUnits: 5,
-      },
-      GlobalSecondaryIndexes: [
-        {
-          IndexName: "LongUrlIndex",
-          KeySchema: [
-            {
-              AttributeName: "longUrl",
-              KeyType: "HASH",
-            },
-          ],
-          Projection: {
-            ProjectionType: "ALL",
-          },
-          ProvisionedThroughput: {
-            ReadCapacityUnits: 5,
-            WriteCapacityUnits: 5,
-          },
-        },
-      ],
-    };
-  
-    // Crear la tabla para las URL cortas
-    dynamoDB.createTable(shortUrlTableParams, function (err, data) {
-      if (err) {
-        console.error("Error al crear la tabla de URL cortas:", err);
-        callback(err);
-      } else {
-        console.log("Tabla de URL cortas creada con éxito:", data);
-  
-        // Crear la tabla para las estadísticas
-        dynamoDB.createTable(statsTableParams, function (err, data) {
-          if (err) {
-            console.error("Error al crear la tabla de estadísticas:", err);
-            callback(err);
-          } else {
-            console.log("Tabla de estadísticas creada con éxito:", data);
-            callback(null);
-          }
-        });
-      }
-    });
-  }
-
 
 export async function getAllTables(req, res) {
   var params = {};
@@ -135,9 +22,128 @@ export async function getAllTables(req, res) {
       params.ExclusiveStartTableName = response.LastEvaluatedTableName;
     }
   }
-  res.status(200).json({
-    tables,
-  });
+  if(res){
+    res.status(200).json({
+      tables,
+    });
+  }
+  else {
+    return tables;
+  }
+  
+}
+
+export async function createTables(callback) {
+  
+  const shortUrlTableParams = {
+    TableName: "ShortsUrl",
+    KeySchema: [
+      {
+        AttributeName: "shortUrl",
+        KeyType: "HASH",
+      },
+    ],
+    AttributeDefinitions: [
+      {
+        AttributeName: "shortUrl",
+        AttributeType: "S",
+      },
+      {
+        AttributeName: "longUrl",
+        AttributeType: "S",
+      },
+    ],
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 5,
+      WriteCapacityUnits: 5,
+    },
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "LongUrlIndex",
+        KeySchema: [
+          {
+            AttributeName: "longUrl",
+            KeyType: "HASH",
+          },
+        ],
+        Projection: {
+          ProjectionType: "KEYS_ONLY",
+        },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5,
+        },
+      },
+    ],
+  };
+
+  const statsTableParams = {
+    TableName: "Stats",
+    KeySchema: [
+      {
+        AttributeName: "shortUrl",
+        KeyType: "HASH",
+      },
+    ],
+    AttributeDefinitions: [
+      {
+        AttributeName: "shortUrl",
+        AttributeType: "S",
+      },
+      {
+        AttributeName: "longUrl",
+        AttributeType: "S",
+      },
+    ],
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 5,
+      WriteCapacityUnits: 5,
+    },
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "LongUrlIndex",
+        KeySchema: [
+          {
+            AttributeName: "longUrl",
+            KeyType: "HASH",
+          },
+        ],
+        Projection: {
+          ProjectionType: "ALL",
+        },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5,
+        },
+      },
+    ],
+  };
+  const allTables = await getAllTables();
+
+  if (!allTables.length > 0) {
+    dynamoDB.createTable(shortUrlTableParams, function (err, data) {
+      if (err) {
+        console.error("Error al crear la tabla de URL cortas:", err);
+        callback(err);
+      } else {
+        console.log("Tabla de URL cortas creada con éxito:", data);
+
+        // Crear la tabla para las estadísticas
+        dynamoDB.createTable(statsTableParams, function (err, data) {
+          if (err) {
+            console.error("Error al crear la tabla de estadísticas:", err);
+            callback(err);
+          } else {
+            console.log("Tabla de estadísticas creada con éxito:", data);
+            callback(null);
+          }
+        });
+      }
+    });
+  }
+  else {
+    callback(null);
+  }
 }
 
 export async function getItemsTable(tableName, res) {
@@ -150,10 +156,13 @@ export async function getItemsTable(tableName, res) {
   });
 }
 export function persistData(longUrl, callback) {
-  const hash = nanoid(6);
-  const startTime = Date.now(); 
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const customNanoId = customAlphabet(alphabet, 6);
+  const hash = customNanoId();
+  const domainWithNanoid = config.ENDPOINT_API.concat(hash);
+  const startTime = Date.now();
 
-  
   const hashedUrl = crypto.createHash("sha256").update(hash).digest("hex");
 
   const queryParams = {
@@ -164,7 +173,7 @@ export function persistData(longUrl, callback) {
       ":longUrl": longUrl,
     },
     ProjectionExpression: "shortUrl",
-    Limit: 1, 
+    Limit: 1,
   };
 
   docClient.query(queryParams, function (err, data) {
@@ -174,20 +183,23 @@ export function persistData(longUrl, callback) {
     } else {
       if (data.Items.length > 0) {
         
-        const existingShortUrl = data.Items[0].shortUrl;
-        console.log(
-          `La shortUrl "${existingShortUrl}" ya existe para el longUrl "${longUrl}"`
+        callback(
+          "La URL ingresada ya ha sido acortada en el sistema"
         );
-        callback(null, existingShortUrl);
-      } else {
-        
 
-        const endTime = Date.now(); 
-        const generatedDuration = endTime - startTime; 
-        recordStatistics(hashedUrl, longUrl, new Date().toISOString(), generatedDuration, 0);
+      } else {
+        const endTime = Date.now();
+        const generatedDuration = endTime - startTime;
+        recordStatistics(
+          hashedUrl,
+          longUrl,
+          new Date().toISOString(),
+          generatedDuration,
+          0
+        );
 
         const params = {
-          TableName: "ShortsUrl", 
+          TableName: "ShortsUrl",
           Item: {
             shortUrl: hashedUrl,
             longUrl: longUrl,
@@ -201,7 +213,8 @@ export function persistData(longUrl, callback) {
             callback(error);
           } else {
             console.log("Datos persistidos con éxito:", params.Item);
-            callback(null, hash);
+            // callback(null, hash);
+            callback(null, domainWithNanoid, hashedUrl);
           }
         });
       }
@@ -209,10 +222,9 @@ export function persistData(longUrl, callback) {
   });
 }
 
-
 export function searchInDynamoAndResponse(hashedUrl, res) {
   const params = {
-    TableName: "ShortsUrl", 
+    TableName: "ShortsUrl",
     Key: {
       shortUrl: hashedUrl,
     },
@@ -232,35 +244,39 @@ export function searchInDynamoAndResponse(hashedUrl, res) {
   });
 }
 
-export function searchInDynamoAndRedirect(hashedUrl, res, startTime, userAgent, ipAddress) {
-    const params = {
-      TableName: "ShortsUrl", 
-      Key: {
-        shortUrl: hashedUrl, 
-      },
-    };
-  
-    docClient.get(params, (error, data) => {
-      if (error) {
-        console.error("Error al obtener de DynamoDB:", error);
-        return res.status(500).json({ error: "Error interno del servidor" });
-      }
-  
-      if (!data.Item) {
-        return res.status(404).json({ error: "URL corta no encontrada" });
-      }
-      const endTime = Date.now(); 
-      const redirectDuration = endTime - startTime; 
+export function searchInDynamoAndRedirect(
+  hashedUrl,
+  res,
+  startTime,
+  userAgent,
+  ipAddress
+) {
+  const params = {
+    TableName: "ShortsUrl",
+    Key: {
+      shortUrl: hashedUrl,
+    },
+  };
 
-      console.log("Obtenido desde DynamoDB.");
+  docClient.get(params, (error, data) => {
+    if (error) {
+      console.error("Error al obtener de DynamoDB:", error);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    }
 
-      res.redirect(301, data.Item.longUrl);
+    if (!data.Item) {
+      return res.status(404).json({ error: "URL corta no encontrada" });
+    }
+    const endTime = Date.now();
+    const redirectDuration = endTime - startTime;
 
-      recordRedirectStats(hashedUrl, redirectDuration, userAgent, ipAddress);
-      
-    });
-  }
+    console.log("Obtenido desde DynamoDB. REDIRECT");
 
+    res.redirect(302, data.Item.longUrl);
+
+    recordRedirectStats(hashedUrl, redirectDuration, userAgent, ipAddress);
+  });
+}
 
 export function searchStatsInDynamoAndResponse(hashedUrl, res) {
   const params = {
@@ -272,16 +288,27 @@ export function searchStatsInDynamoAndResponse(hashedUrl, res) {
 
   docClient.get(params, (dynamoError, data) => {
     if (dynamoError) {
-      console.error("Error al obtener estadísticas desde DynamoDB:", dynamoError);
+      console.error(
+        "Error al obtener estadísticas desde DynamoDB:",
+        dynamoError
+      );
       callback(dynamoError, null);
     } else {
       if (data.Item) {
         console.log("Estadísticas obtenidas desde DynamoDB:", data.Item);
         res.status(200).json(data.Item);
       } else {
-        // Si no se encontraron estadísticas en DynamoDB
-        console.log("No se encontraron estadísticas para la shortUrl:", shortUrl);
-        res.status(404).send("No se encontraron estadísticas para la shortUrl:", shortUrl);
+        
+        console.log(
+          "No se encontraron estadísticas para la shortUrl:",
+          hashedUrl
+        );
+        res
+          .status(404)
+          .json({
+            error:
+              "No se encontraron estadísticas para la shortUrl: " + hashedUrl,
+          });
       }
     }
   });
@@ -289,21 +316,26 @@ export function searchStatsInDynamoAndResponse(hashedUrl, res) {
 
 export function deleteShortUrl(hashedUrl, callback) {
   const deleteShortUrlParams = {
-    TableName: "ShortsUrl", 
+    TableName: "ShortsUrl",
     Key: {
       shortUrl: hashedUrl,
     },
+    KeyConditionExpression: "attribute_exists(shortUrl)",
+    ReturnValues: "ALL_OLD"
   };
 
   docClient.delete(deleteShortUrlParams, (error, data) => {
     if (error) {
       console.error("Error al eliminar la shortUrl desde DynamoDB:", error);
       callback(error);
+    }
+    
+    if (!data.Attributes) {
+      callback(new Error("No existe la URL solicitada."));
     } else {
-
-      // Eliminar las estadísticas asociadas de la tabla Stats
+      
       const deleteStatsParams = {
-        TableName: "Stats", 
+        TableName: "Stats",
         Key: {
           shortUrl: hashedUrl,
         },
@@ -311,22 +343,27 @@ export function deleteShortUrl(hashedUrl, callback) {
 
       docClient.delete(deleteStatsParams, (statsError) => {
         if (statsError) {
-          console.error("Error al eliminar estadísticas desde DynamoDB:", statsError);
+          console.error(
+            "Error al eliminar estadísticas desde DynamoDB:",
+            statsError
+          );
           callback(statsError);
         } else {
-          console.log("Estadísticas eliminadas con éxito para la shortUrl:", hashedUrl);
+          console.log(
+            "Estadísticas eliminadas con éxito para la shortUrl:",
+            hashedUrl
+          );
+
           
-          // También eliminamos la entrada del caché si existía
           deleteCacheForShortUrl(hashedUrl, (error, hashedUrl) => {
-            if(error) {
+            if (error) {
               console.log("Error al eliminar la ShortURL del caché.");
               callback(null, error);
-            }
-            else {
+            } else {
               console.log("Short URL eliminada con éxito", hashedUrl);
               callback(null, hashedUrl);
             }
-          })
+          });
         }
       });
     }

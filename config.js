@@ -10,6 +10,7 @@ const config = {
     SECRET_KEY_AWS: process.env.SECRET_KEY_AWS,
     REDIS_HOST: process.env.REDIS_HOST,
     REDIS_PORT: process.env.REDIS_PORT,
+    ENDPOINT_API: process.env.ENDPOINT_API
 }
 
 export { config }

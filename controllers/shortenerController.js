@@ -1,32 +1,30 @@
 import crypto from "crypto";
 import { searchCacheOrDynamoAndResponse } from "../utils/redis.js";
+import { setCacheData } from "../utils/redis.js";
+import { recordStatistics } from "../utils/stats.js";
 
-
-
-
-export async function shortenUrl(req, res, persistData, setCacheData) {
+export async function shortenUrl(req, res, persistData) {
   const longUrl = req.body.longUrl;
-
-  // Persistir los datos en DynamoDB
-  persistData(longUrl, function (err, shortUrl) {
+ 
+  persistData(longUrl, function (err, shortUrl, hashedUrl) {
     if (err) {
-      return res.status(500).json({ error: "Error interno del servidor" });
+      return res.status(500).json({ error: "Error interno del servidor: " + err });
     }
 
     
-    // Almacenar la URL corta en Redis con un tiempo de expiración. (24 horas)
-    setCacheData(shortUrl, longUrl);
+    setCacheData(hashedUrl, longUrl);
 
     res.json({ shortUrl });
   });
 }
 
 export async function expandUrl(req, res) {
-  const shortUrl = req.params.shortUrl;
-
-  const hashedUrl = crypto.createHash("sha256").update(shortUrl).digest("hex");
-
-
-  searchCacheOrDynamoAndResponse(hashedUrl, res);
+  const shortUrl = req.query.shortUrl;
+  if (shortUrl) {
+    const hash = shortUrl.slice(-6);
+    const hashedUrl = crypto.createHash("sha256").update(hash).digest("hex");
+    searchCacheOrDynamoAndResponse(hashedUrl, res);
+  } else {
+    res.status(400).json("No ingresó una Short URL.");
+  }
 }
-

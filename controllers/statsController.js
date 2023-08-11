@@ -1,10 +1,14 @@
-import {searchStatsInCacheOrDynamoAndResponse} from "../utils/redis.js"
+import { searchStatsInDynamoAndResponse } from "../utils/dynamodb.js";
 import crypto from "crypto";
 
-// Función para obtener todas las estadísticas de una shortUrl
-export function getStatsForShortUrl(req, res) {
-    const shortUrl = req.params.shortUrl;
-    const hashedUrl = crypto.createHash("sha256").update(shortUrl).digest("hex");
 
-    searchStatsInCacheOrDynamoAndResponse(hashedUrl, res);
+export function getStatsForShortUrl(req, res) {
+  const shortUrl = req.query.shortUrl;
+  if (shortUrl) {
+    const hash = shortUrl.slice(-6); 
+    const hashedUrl = crypto.createHash("sha256").update(hash).digest("hex");
+    searchStatsInDynamoAndResponse(hashedUrl, res);
+  } else {
+    res.status(400).json("No ingresó ninguna Short URL.");
+  }
 }

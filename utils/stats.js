@@ -1,9 +1,7 @@
-// utils/stats.js
 import AWS from './awsConfig.js';
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 
-// Record Statidistics
 export function recordStatistics(shortUrl, longUrl, createdTimestamp, generatedDuration, redirectDuration) {
   const params = {
     TableName: "Stats", 
@@ -27,7 +25,6 @@ export function recordStatistics(shortUrl, longUrl, createdTimestamp, generatedD
   });
 }
 
-// Función para registrar las estadísticas de redirección
 export function recordRedirectStats(shortUrl, redirectDuration, userAgent, ipAddress) {
   const params = {
     TableName: "Stats", 
